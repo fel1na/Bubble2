@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:app_links/app_links.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +10,7 @@ import '../../core/theme/bubble_theme.dart';
 import '../../core/transport/transport_orchestrator.dart';
 import '../bubble_visuals/bubble_painter.dart';
 import '../common/glass_surface.dart';
+import '../qr/qr_scanner_screen.dart';
 import '../room/room_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -25,6 +28,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  StreamSubscription<Uri>? _linkSub;
+
   @override
   void initState() {
     super.initState();
@@ -33,10 +38,33 @@ class _HomeScreenState extends State<HomeScreen> {
     widget.orchestrator.startNearbyDiscovery(
       displayName: widget.store.nickname.isNotEmpty ? widget.store.nickname : 'Bubble',
     );
+    _initDeepLinks();
+  }
+
+  Future<void> _initDeepLinks() async {
+    try {
+      final appLinks = AppLinks();
+      final initial = await appLinks.getInitialLink();
+      if (initial != null) {
+        await _handleIncomingUri(initial);
+      }
+      _linkSub = appLinks.uriLinkStream.listen(_handleIncomingUri);
+    } catch (_) {
+      // Ignore in test/unsupported environments
+    }
+  }
+
+  Future<void> _handleIncomingUri(Uri uri) async {
+    final parsed = BubbleGroup.parseQrOrLink(uri.toString());
+    if (parsed == null) return;
+    final group = await widget.store.joinFromInvite(parsed);
+    if (!mounted) return;
+    _openRoom(group, directWsUrl: parsed.localWsUrl);
   }
 
   @override
   void dispose() {
+    _linkSub?.cancel();
     widget.store.removeListener(_onChanged);
     widget.orchestrator.removeListener(_onChanged);
     widget.orchestrator.stopNearbyDiscovery();
@@ -122,6 +150,20 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Future<void> _openQrScanner() async {
+    HapticFeedback.selectionClick();
+    final payload = await Navigator.of(context).push<BubbleInvitePayload>(
+      CupertinoPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => const QrScannerScreen(),
+      ),
+    );
+    if (payload == null) return;
+    final group = await widget.store.joinFromInvite(payload);
+    if (!mounted) return;
+    _openRoom(group, directWsUrl: payload.localWsUrl);
+  }
+
   void _showJoinSheet() {
     final s = AppStrings(widget.store.language);
     final inputCtrl = TextEditingController();
@@ -138,15 +180,41 @@ class _HomeScreenState extends State<HomeScreen> {
               s.joinBubble,
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Inserisci codice a 6 cifre, link WhatsApp o payload QR',
-              style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.6)),
-            ),
             const SizedBox(height: 14),
+            CupertinoButton(
+              padding: EdgeInsets.zero,
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                _openQrScanner();
+              },
+              child: Container(
+                height: 52,
+                decoration: BoxDecoration(
+                  gradient: BubbleTheme.primaryGradient,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                alignment: Alignment.center,
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(CupertinoIcons.qrcode_viewfinder, size: 20, color: Colors.white),
+                    SizedBox(width: 8),
+                    Text(
+                      'Scansiona QR con Fotocamera',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Oppure inserisci codice a 6 cifre / link WhatsApp',
+              style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.58)),
+            ),
+            const SizedBox(height: 8),
             CupertinoTextField(
               controller: inputCtrl,
-              autofocus: true,
               placeholder: '123456 o https://.../join/...',
               placeholderStyle: TextStyle(color: Colors.white.withValues(alpha: 0.35)),
               style: const TextStyle(color: Colors.white),
@@ -156,7 +224,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderRadius: BorderRadius.circular(14),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             CupertinoButton(
               padding: EdgeInsets.zero,
               onPressed: () async {
@@ -168,14 +236,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 _openRoom(group, directWsUrl: parsed.localWsUrl);
               },
               child: Container(
-                height: 50,
+                height: 48,
                 decoration: BoxDecoration(
-                  gradient: BubbleTheme.primaryGradient,
+                  color: Colors.white.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
                 ),
                 alignment: Alignment.center,
                 child: const Text(
-                  'Entra nel Bubble',
+                  'Entra con Codice / Link',
                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
                 ),
               ),

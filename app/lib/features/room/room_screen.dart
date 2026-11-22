@@ -11,6 +11,7 @@ import '../../core/theme/bubble_theme.dart';
 import '../../core/transport/transport_orchestrator.dart';
 import '../bubble_visuals/bubble_painter.dart';
 import '../common/glass_surface.dart';
+import 'room_share_widgets.dart';
 
 class RoomScreen extends StatefulWidget {
   final BubbleGroup group;
@@ -371,6 +372,20 @@ class _RoomScreenState extends State<RoomScreen> {
                 ],
 
                 const Spacer(),
+
+                if (!_bursting) ...[
+                  RoomShareCard(
+                    group: _group,
+                    serverUrl: widget.store.serverUrl,
+                    myName: widget.store.nickname.isNotEmpty ? widget.store.nickname : 'Tu',
+                    participants: participants,
+                    localWsUrl: orch.localQrEndpointUrl,
+                    wifiSsid: orch.hotspotSsid,
+                    wifiPassword: orch.hotspotPassword,
+                    strings: s,
+                  ),
+                  const SizedBox(height: 18),
+                ],
 
                 // Bottom Controls
                 Row(

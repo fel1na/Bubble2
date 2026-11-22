@@ -1,6 +1,9 @@
+import 'package:bubble/core/l10n/app_strings.dart';
 import 'package:bubble/core/models/bubble_group.dart';
 import 'package:bubble/core/storage/bubble_store.dart';
 import 'package:bubble/core/transport/rtc_mesh_engine.dart';
+import 'package:bubble/features/room/room_share_widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -80,6 +83,49 @@ void main() {
 
       expect(a.shouldInitiateOffer('dev_bbb'), isTrue);
       expect(b.shouldInitiateOffer('dev_aaa'), isFalse);
+    });
+  });
+
+  group('Deep link & RoomShareCard', () {
+    test('parses bubble://join custom scheme deep link from WhatsApp landing', () {
+      final parsed = BubbleGroup.parseQrOrLink(
+        'bubble://join?code=774411&name=Ristorante#k=secret99',
+      );
+      expect(parsed, isNotNull);
+      expect(parsed!.code, '774411');
+      expect(parsed.name, 'Ristorante');
+      expect(parsed.secret, 'secret99');
+    });
+
+    testWidgets('RoomShareCard renders 6-digit tiles and share actions', (tester) async {
+      final group = BubbleGroup(
+        id: 'grp_3',
+        code: '123456',
+        secret: 'sec',
+        name: 'Test Bubble',
+        isCreator: true,
+        joinedAt: DateTime(2026),
+        lastSessionAt: DateTime(2026),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: RoomShareCard(
+              group: group,
+              serverUrl: 'https://bubble.example.org',
+              myName: 'Ale',
+              participants: const [],
+              strings: const AppStrings('it'),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Test Bubble'), findsOneWidget);
+      expect(find.text('Copia'), findsOneWidget);
+      expect(find.text('WhatsApp'), findsOneWidget);
+      expect(find.text('QR'), findsOneWidget);
     });
   });
 }
