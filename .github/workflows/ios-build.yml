@@ -24,10 +24,8 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Install Dart & CocoaPods dependencies
-        run: |
-          flutter pub get
-          cd ios && pod install && cd ..
+      - name: Install Dart dependencies
+        run: flutter pub get
 
       - name: Run Flutter analyze & unit tests
         run: |
