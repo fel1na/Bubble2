@@ -1,0 +1,18 @@
+services:
+  bubble-signaling:
+    build: .
+    container_name: bubble2-signaling
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    environment:
+      - PORT=8787
+      - HOST=0.0.0.0
+
+  coturn:
+    image: coturn/coturn:4.6.2
+    container_name: bubble2-coturn
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro

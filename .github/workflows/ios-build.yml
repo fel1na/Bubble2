@@ -1,0 +1,51 @@
+name: Build iOS (.ipa) for Testing
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'app/**'
+      - '.github/workflows/ios-build.yml'
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install Dart & CocoaPods dependencies
+        run: |
+          flutter pub get
+          cd ios && pod install && cd ..
+
+      - name: Run Flutter analyze & unit tests
+        run: |
+          flutter analyze
+          flutter test
+
+      - name: Build unsigned iOS app bundle
+        run: |
+          flutter build ios --release --no-codesign
+
+      - name: Package unsigned IPA for Sideloadly / AltStore
+        run: |
+          mkdir -p build/ipa/Payload
+          cp -R build/ios/iphoneos/Runner.app build/ipa/Payload/
+          cd build/ipa && zip -r ../Bubble2-unsigned.ipa Payload
+
+      - name: Upload Bubble2 IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bubble2-unsigned-ipa
+          path: app/build/Bubble2-unsigned.ipa

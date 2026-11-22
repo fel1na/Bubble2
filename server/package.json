@@ -1,0 +1,22 @@
+{
+  "name": "bubble2-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Independent open-source signaling, WhatsApp invite resolver, and relay server for Bubble2",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "tsx --test test/*.test.ts"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.5",
+    "@types/ws": "^8.5.14",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}
